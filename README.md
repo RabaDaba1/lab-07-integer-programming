@@ -26,10 +26,6 @@ Run it via `pytest`/`pycharm`/`vscode`.
 The `knapsack_problems` folder contains some input instances. You may benchmark your solvers by running: `python benchmark.py`.
 This script is **not** used in the grading process. You may want to edit the `benchmark.py` to enable/disable solvers or problems.
 
-## Other
-
-The `check_ie.py` is a very basic acceptance test, you may use it to try to solve the problem presented during the class/lecture.
-
 ## GitLab Setup 
 
 * [ ] Make sure, you have a **private** group 
@@ -65,7 +61,6 @@ The rest will be taken care of automatically. You can check the `GRADE.md` file 
 .
 ├── README.md     # this README
 ├── conftest.py   # this file makes sure pytest works correctly 
-├── check_ie.py   # a very basic acceptance test for the implicit enumeration solver
 ├── benchmark.py  # script to run a solver benchmark
 ├── knapsack_benchmark.py # benchmark implementation
 ├── requirements.txt      # python libraries required by the problem
