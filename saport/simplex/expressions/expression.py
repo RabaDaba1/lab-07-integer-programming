@@ -1,6 +1,6 @@
 from __future__ import annotations
 from copy import deepcopy
-from typing import Iterable, List, Union, Tuple
+from typing import Iterable, List
 
 from itertools import groupby
 from functools import reduce
@@ -29,6 +29,14 @@ class Expression:
             returns a new expression with sorted and atoms and reduced coefficients 
         coefficients(model: Model) -> list[float]:
             return list of coefficients corresponding to the variables in the model
+        get_coefficient(var: Variable) -> float:
+            gets a coefficient for the given variable
+            warning: should be used only on the simplified expressions, otherwise the result may be incorrect
+        set_coefficient(var: Variable, coeff: float):
+            overrides coefficient for the given variable 
+            if there is no such variable in the expression, it's get added with the given coefficient
+            setting coeff to 0.0 removes variable from the expression
+            warning: should be used only on the simplified expressions, otherwise the result may be incorrect
         is_equivalent(other: Expression, model: Model) -> bool:
             returns true if other expression is equivalent given the specific model
         __add__(other: Expression) -> Expression:
@@ -53,7 +61,7 @@ class Expression:
     @classmethod
     def from_vectors(self, variables: Iterable[Variable], coefficients: Iterable[float]) -> Expression:
         assert len(variables) == len(coefficients), f"number of coefficients should correspond to variables in the expression"
-        atoms = [Atom(v,f) for (v,f) in zip(variables, coefficients)]
+        atoms = [Atom(v,f) for (v,f) in zip(variables, coefficients) if f != 0]
         return Expression(*atoms)
 
     def evaluate(self, assignment: List[float]) -> float:
@@ -69,7 +77,7 @@ class Expression:
         grouped_atoms = [list(g[1]) for g in groupby(sorted_atoms, key=projection)]
  
         self.atoms = [reduce_group(g) for g in grouped_atoms]
-        
+            
     def coefficients(self, model: ssmod.Model) -> List[float]:
         simplified_expression = deepcopy(self)
         simplified_expression.simplify()
@@ -79,17 +87,34 @@ class Expression:
                 coefficients[a.var.index] = a.coefficient
         return coefficients
 
+    def get_coefficient(self, var: Variable) -> float:
+        for a in self.atoms:
+            if a.var == var:
+                return a.coefficient
+        return 0.0
+
+    def set_coefficient(self, var: Variable, coeff: float):
+        self.simplify()
+        matching_atoms = [a for a in self.atoms if a.var == var]
+
+        if len(matching_atoms) == 0 and coeff != 0.0:
+            self.atoms += Atom(var, coeff)
+            return 
+
+        if coeff == 0.0:
+            self.atoms = [a for a in self.atoms if a.var != var]
+            return 
+
+        matching_atom = matching_atoms[0]
+        matching_atom.coefficient = coeff
+
     def is_equivalent(self, other: Expression, model: ssmod.model) -> bool:
         return self.coefficients(model) == other.coefficients(model)
 
-    def __add__(self, other: Union[Expression, float]) -> Expression:
-        if isinstance(other, (int, float)) and other == 0:
-            return Expression(*self.atoms)
+    def __add__(self, other: Expression) -> Expression:
         new_atoms = list(self.atoms)
-        new_atoms += other.atoms
+        new_atoms += other.atoms;
         return Expression(*new_atoms)
-    
-    __radd__ = __add__
 
     def __sub__(self, other: Expression) -> Expression:
         return self.__add__(other * -1)
@@ -197,6 +222,9 @@ class Variable(Atom):
         super().__init__(self, 1)
 
     def __str__(self) -> str:
+        return self.name
+    
+    def __repr__(self) -> str:
         return self.name
 
     def __key__(self) -> Tuple[str, int]:

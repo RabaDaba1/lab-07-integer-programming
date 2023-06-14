@@ -155,12 +155,13 @@ class Solver:
         table = np.array([objective_row] + [c.expression.coefficients(model) + [c.bound] for c in model.constraints])
         return sstab.Tableau(model, table)
 
-    def _artifical_variables_are_positive(self, tableau: sstab.Tableau):
+    def _artifical_variables_are_positive(self, tableau: sstab.Tableau): 
         assignment = tableau.extract_assignment()
         for variable in self._artificial:
             if assignment[variable.index] > sstab.eps:
                 return True
         return False
+
 
     def _restore_initial_tableau(self, tableau, model):
         basis = tableau.extract_basis()

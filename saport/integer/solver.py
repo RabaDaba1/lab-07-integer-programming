@@ -60,7 +60,7 @@ class IntegerProgrammingSolver(ABC):
         return self.best_solution
            
     def _lower_bound(self):
-        return self.best_solution.objective_value() if self.best_solution != None and self.best_solution.has_assignment() else float('-inf') 
+        return self.best_solution.objective_value() if self.best_solution is not None and self.best_solution.has_assignment() else float('-inf') 
 
     @abstractmethod
     def _solving_routine(self):

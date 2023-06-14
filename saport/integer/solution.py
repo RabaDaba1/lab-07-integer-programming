@@ -57,13 +57,13 @@ class Solution:
         self.assignment = assignment
 
     def value(self, var: sseexp.Variable) -> int:
-        return None if self.assignment == None else self.assignment[var.index]
+        return None if self.assignment is None else self.assignment[var.index]
 
     def objective_value(self) -> float:
-        return None if self.assignment == None else self.model.objective.evaluate(self.assignment)
+        return None if self.assignment is None else self.model.objective.evaluate(self.assignment)
 
     def has_assignment(self) -> bool:
-        return self.assignment != None
+        return self.assignment is not None
 
     @staticmethod
     def with_assignment(model: simod.Model, assignment: List[float], is_optimal: bool):

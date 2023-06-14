@@ -62,13 +62,13 @@ class Solution:
         return self._assignment[:len(model.variables)]
 
     def value(self, var: sseexp.Variable):
-        return None if self._assignment == None else self._assignment[var.index]
+        return None if self._assignment is None else self._assignment[var.index]
 
     def objective_value(self):
-        return None if self._assignment == None else self.model.objective.evaluate(self._assignment) 
+        return None if self._assignment is None else self.model.objective.evaluate(self._assignment) 
 
     def has_assignment(self):
-        return self._assignment == None
+        return self._assignment is not None
 
     @staticmethod
     def with_assignment(model: ssmod.Model, assignment: List[float], initial_tableau: sstab.Tableau, tableau: sstab.Tableau):
