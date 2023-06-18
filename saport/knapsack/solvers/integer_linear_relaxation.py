@@ -21,6 +21,21 @@ class IntegerLinearRelaxationSolver(Solver):
         # - variables: whether the item gets taken
         # - constraints: weights
         # - objective: values
+        
+        objective = Expression()
+        weights = Expression()
+        
+        for item in self.problem.items:
+            variable = m.create_variable(f"x_{item.index}")
+            
+            objective += item.value * variable
+            weights += item.weight * variable
+            
+            m.add_constraint(variable <= 1)
+            
+        m.add_constraint(weights <= self.problem.capacity)
+        m.maximize(objective)
+        
         return m
 
     def solve(self) -> Solution:

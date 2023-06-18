@@ -121,8 +121,40 @@ class ImplicitEnumerationSolver(IntegerProgrammingSolver):
         # [6] `Solution.with_assignment(self._enum_model, <best possible assignment>, False)`
         # [7] `self.timeout()`
         # [8] `self._select_var_to_branch(left, partial_assignment)`
+        
+        best_possible_assignment = self._best_possible_assignment(partial_assignment)
+        upper_bound = self._enum_model.objective.evaluate(best_possible_assignment)
+        
+        if upper_bound < self._lower_bound():
+            return
+        
+        if not self._is_model_satisfiable_with_partial_assignment(partial_assignment):
+            return
+        
+        if self._total_infeasibility(best_possible_assignment) == 0:
+            if self.best_solution is None or self.best_solution.objective_value() < upper_bound:
+                self.best_solution = Solution.with_assignment(self.model, best_possible_assignment, True)
+                
+            return
+        
+        if self.timeout():
+            self.interrupted = True
+            return
+        
+        branching_variable = self._select_var_to_branch(left, partial_assignment)
+        
+        left.remove(branching_variable)
 
-        raise NotImplementedError()
+        partial_assignment[branching_variable] = 0
+        self._branch_and_bound(partial_assignment, left)
+        
+        partial_assignment[branching_variable] = 1
+        self._branch_and_bound(partial_assignment, left)
+        
+        left.add(branching_variable)
+        
+        del partial_assignment[branching_variable]
+
 
     def _best_possible_assignment(self, partial_assignment: Dict[sseexp.Variable, int]) -> List[int]:
         # TODO: This methods create an assignment (list of integers corresponding to the variables[1])    
@@ -131,8 +163,8 @@ class ImplicitEnumerationSolver(IntegerProgrammingSolver):
         #       - otherwise the value should be `0`
         #
         # [1] self._enum_model.variables
-
-        return []
+                
+        return [partial_assignment[v] if v in partial_assignment else 0 for v in self._enum_model.variables]
 
     def _is_model_satisfiable_with_partial_assignment(self, partial_assignment: Dict[sseexp.Variable, int]) -> bool:
         # TODO: Check for each constraint whether the partial assignments can be extended to satisfy the constraint
@@ -145,6 +177,17 @@ class ImplicitEnumerationSolver(IntegerProgrammingSolver):
         # [1] constraint.expression.coefficients(self._enum_model)
         # [2] constraint.expression.evaluate(<assignment>)
         # [3] constraint.bound (remember that enum model contains only LE constraints)
+        
+        for c in self._enum_model.constraints:
+            optimistic_assignment = []
+            for v in self._enum_model.variables:
+                if v in partial_assignment:
+                    optimistic_assignment.append(partial_assignment[v])
+                else:
+                    optimistic_assignment.append(1) if c.expression.get_coefficient(v) < 0 else optimistic_assignment.append(0)
+                        
+            if c.expression.evaluate(optimistic_assignment) > c.bound:
+                return False
 
         return True
 
@@ -159,7 +202,21 @@ class ImplicitEnumerationSolver(IntegerProgrammingSolver):
         # [1] self._total_infeasibility(<assignment>)
         # [2] self._best_possible_assignment(<partial assignment>)
 
-        return left.pop()
+        best_variable = None
+        smallest_infeasibility = None
+        
+        for variable in left:
+            partial_assignment[variable] = 1
+            total_infeasibility = self._total_infeasibility(self._best_possible_assignment(partial_assignment))
+            
+            if (best_variable is None) or (total_infeasibility < smallest_infeasibility) or (total_infeasibility == smallest_infeasibility and variable.index < best_variable.index):
+                best_variable = variable
+                smallest_infeasibility = total_infeasibility
+                
+            del partial_assignment[variable]
+            
+        return best_variable                
+            
 
     def _total_infeasibility(self, assignment: List[int]) -> int:
         total_infeasibility = 0
@@ -169,7 +226,11 @@ class ImplicitEnumerationSolver(IntegerProgrammingSolver):
         #       Then add the result to the total_infeasibility
         #
         # [1] constraint.expression.evaluate(<assignment>)
-
+        
+        for c in self._enum_model.constraints:
+            evaluation = c.expression.evaluate(assignment)
+            
+            if evaluation > c.bound:
+                total_infeasibility += evaluation - c.bound
+                
         return total_infeasibility
-
-    

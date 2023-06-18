@@ -37,7 +37,39 @@ class LinearRelaxationSolver(IntegerProgrammingSolver):
         # [6] `self.timeout()`
         # [7] `self._model_with_new_constraint(<model>, <constraint>)`
         
-        raise NotImplementedError() 
+        solution = lpsolver.Solver().solve(model)
+        
+        if not solution.is_feasible:
+            return
+        
+        if not solution.is_bounded:
+            self.best_solution = deepcopy(solution)
+            return
+        
+        z_upper = solution.objective_value()
+        
+        if self._lower_bound() > z_upper:
+            return
+        
+        variable = self._find_float_assignment(solution)
+        
+        if variable is None:
+            if self.best_solution is None or z_upper > self.best_solution.objective_value():
+                self.best_solution = deepcopy(solution)
+            return
+        
+        if self.timeout():
+            self.interrupted = True
+            return
+        
+        
+        solution_value = solution.value(variable)
+        
+        upper_bound = math.floor(solution_value)
+        lower_bound = math.ceil(solution_value)
+        
+        self._branch_and_bound(self._model_with_new_constraint(model, variable >= lower_bound))
+        self._branch_and_bound(self._model_with_new_constraint(model, variable <= upper_bound))
 
         
     def _find_float_assignment(self, solution: lpsolution.Solution) -> sseexp.Variable:
@@ -48,6 +80,12 @@ class LinearRelaxationSolver(IntegerProgrammingSolver):
         #
         # [1] `self.model.variables` 
         # [2] `solution.value(<variable>)`
+        
+        for variable in self.model.variables:
+            value = solution.value(variable)
+            
+            if not math.isclose(value, round(value)):
+                return variable
   
         return None
 
